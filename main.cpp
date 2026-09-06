@@ -1,4 +1,5 @@
 
+#include <cerrno>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
@@ -8,8 +9,8 @@
 #include <linux/version.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <termios.h>
+#include <unistd.h>
 
 #define DEV_INPUT "/dev/input/event"
 
@@ -288,8 +289,6 @@ int record_event(int fd) {
   FD_ZERO(&rdfs);
   FD_SET(fd, &rdfs);
 
-
-
   termios term;
   tcgetattr(fileno(stdin), &term);
 
@@ -335,7 +334,8 @@ int record_event(int fd) {
  */
 int start_reading(char *dev) {
   if (getuid() != 0) {
-    fprintf(stderr,"you run this program as regular user, some inputs may not work");
+    fprintf(stderr,
+            "You run this program as regular user, some inputs may not work");
   }
   int fd;
   char *filename = NULL;
@@ -345,19 +345,33 @@ int start_reading(char *dev) {
     filename = strdup(dev);
   }
   if (!filename) {
-    fprintf(stderr,"Error, no device provided");
+    fprintf(stderr, "Error, no device provided");
     return EXIT_FAILURE;
   }
   fd = open(filename, O_RDONLY);
+
+  if ((fd = open(filename, O_RDONLY)) < 0) {
+    perror("evtest");
+    if (errno == EACCES && getuid() != 0)
+      fprintf(stderr,
+              "You do not have access to %s. Try "
+              "running as root instead.\n",
+              filename);
+    goto error;
+  }
 
   signal(SIGINT, interrupt_handler);
   signal(SIGTERM, interrupt_handler);
 
   return record_event(fd);
+
+error:
+  free(filename);
+  return EXIT_FAILURE;
 }
 
 int main(int argc, char **argv) {
-  printf("%d\n", getuid());
+  fprintf(stdout, "uid: %d\n", getuid());
   start_reading(argv[1]);
   return EXIT_FAILURE;
 }
