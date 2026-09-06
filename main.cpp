@@ -8,8 +8,8 @@
 #include <linux/version.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
 #include <unistd.h>
+#include <termios.h>
 
 #define DEV_INPUT "/dev/input/event"
 
@@ -288,6 +288,14 @@ int record_event(int fd) {
   FD_ZERO(&rdfs);
   FD_SET(fd, &rdfs);
 
+
+
+  termios term;
+  tcgetattr(fileno(stdin), &term);
+
+  term.c_lflag &= ~ECHO;
+  tcsetattr(fileno(stdin), 0, &term);
+
   while (!stop) {
     // multiplexing
     // as far as i understood this will multiply output.. kinda xd
@@ -317,6 +325,9 @@ int record_event(int fd) {
       }
     }
   }
+
+  term.c_lflag |= ECHO;
+  tcsetattr(fileno(stdin), 0, &term);
   return EXIT_SUCCES;
 }
 /**
@@ -347,6 +358,6 @@ int start_reading(char *dev) {
 
 int main(int argc, char **argv) {
   printf("%d\n", getuid());
-  start_reading(argv[2]);
+  start_reading(argv[1]);
   return EXIT_FAILURE;
 }
