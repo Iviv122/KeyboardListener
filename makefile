@@ -1,2 +1,2 @@
 main:
-	g++ main.cpp
+	clang++ main.cpp -Winitializer-overrides
