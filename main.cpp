@@ -1,6 +1,7 @@
 
 #include <cerrno>
 #include <csignal>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <dirent.h>
@@ -276,6 +277,8 @@ const char *names[KEY_MAX] = {NAME_ELEMENT(KEY_RESERVED),
 // as far as i understood volatile is required to prevent some funny compiler
 // interactions TwT
 static volatile int stop = 0;
+static volatile bool human = 0;
+static volatile bool verbose = 1;
 
 void interrupt_handler(int sig) { stop = 1; }
 
@@ -390,8 +393,13 @@ int record_event(int fd) {
       // c 0 - ***is normally an error code***
       // https://aeb.win.tue.nl/linux/kbd/scancodes-1.html#ss1.3
       if (ev[i].value == 1 && ev[i].code != 0) {
-
-        printf("%s\n", names[ev[i].code]);
+        if (verbose) {
+          if (human) {
+            printf("%s\n", names[ev[i].code]);
+          } else {
+            printf("%d\n", ev[i].code);
+          }
+        }
       }
     }
   }
@@ -447,8 +455,37 @@ error:
   return EXIT_FAILURE;
 }
 
+void usage() { fprintf(stderr, "klisten [flags] device"); }
+
+void initialize_main(int argc, char **argv) {
+  int i = 0;
+  char c;
+  while ((c = argv[1][i]) != '\0') {
+
+    switch (c) {
+    case 'h':
+      human = 1;
+      break;
+    case 'v':
+      verbose = 0;
+      break;
+    }
+
+    i++;
+  }
+}
+
 int main(int argc, char **argv) {
-  fprintf(stdout, "uid: %d\n", getuid());
-  start_reading(argv[1]);
+  if (argv[1] == NULL) {
+    start_reading(NULL);
+  }
+  if (argv[1] != NULL && argv[2] == NULL) {
+    initialize_main(argc, argv);
+    start_reading(NULL);
+  }
+  if (argv[1] != NULL && argv[2] != NULL) {
+    initialize_main(argc, argv);
+    start_reading(argv[2]);
+  }
   return EXIT_FAILURE;
 }
