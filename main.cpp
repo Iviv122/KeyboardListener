@@ -3,6 +3,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <dirent.h>
 #include <fcntl.h>
 #include <linux/input-event-codes.h>
 #include <linux/input.h>
@@ -12,7 +13,9 @@
 #include <termios.h>
 #include <unistd.h>
 
+#define DEV_INPUT_EVENT "/dev/input"
 #define DEV_INPUT "/dev/input/event"
+#define EVENT_DEV_NAME "event"
 
 #define EXIT_SUCCES 0
 #define EXIT_ERROR 1
@@ -277,6 +280,74 @@ static volatile int stop = 0;
 void interrupt_handler(int sig) { stop = 1; }
 
 /**
+ * https://github.com/freedesktop-unofficial-mirror/evtest
+ * Filter for the AutoDevProbe scandir on /dev/input.
+ *
+ * @param dir The current directory entry provided by scandir.
+ *
+ * @return Non-zero if the given directory entry starts with "event", or zero
+ * otherwise.
+ */
+static int is_event_device(const struct dirent *dir) {
+  return strncmp(EVENT_DEV_NAME, dir->d_name, 5) == 0;
+}
+
+/**
+ * https://github.com/freedesktop-unofficial-mirror/evtest
+ * Scans all /dev/input/event*, display them and ask the user which one to
+ * open.
+ *
+ * @return The event device file name of the device file selected. This
+ * string is allocated and must be freed by the caller.
+ */
+static char *scan_devices(void) {
+  struct dirent **namelist;
+  int i, ndev, devnum;
+  char *filename;
+  int max_device = 0;
+
+  ndev = scandir(DEV_INPUT_EVENT, &namelist, is_event_device, versionsort);
+  if (ndev <= 0) {
+    return NULL;
+  }
+
+  fprintf(stderr, "Available devices:\n");
+
+  for (i = 0; i < ndev; i++) {
+    char fname[64];
+    int fd = -1;
+    char name[256] = "???";
+
+    snprintf(fname, sizeof(fname), "%s/%s", DEV_INPUT_EVENT,
+             namelist[i]->d_name);
+    fd = open(fname, O_RDONLY);
+    if (fd < 0)
+      continue;
+    ioctl(fd, EVIOCGNAME(sizeof(name)), name);
+
+    fprintf(stderr, "%s:	%s\n", fname, name);
+    close(fd);
+
+    sscanf(namelist[i]->d_name, "event%d", &devnum);
+    if (devnum > max_device)
+      max_device = devnum;
+
+    free(namelist[i]);
+  }
+
+  fprintf(stderr, "Select the device event number [0-%d]: ", max_device);
+  scanf("%d", &devnum);
+
+  if (devnum > max_device || devnum < 0)
+    return NULL;
+
+  asprintf(&filename, "%s/%s%d", DEV_INPUT_EVENT, EVENT_DEV_NAME, devnum);
+
+  return filename;
+}
+/**
+ * copied and modified from
+ * https://github.com/freedesktop-unofficial-mirror/evtest
  *  @param fd corresponds to /dev/input/input<FD>
  */
 int record_event(int fd) {
@@ -331,16 +402,22 @@ int record_event(int fd) {
 }
 /**
  * @param dev input device number
+ * copied and modified from
+ * https://github.com/freedesktop-unofficial-mirror/evtest
  */
 int start_reading(char *dev) {
   if (getuid() != 0) {
     fprintf(stderr,
-            "You run this program as regular user, some inputs may not work");
+            "You run this program as regular user, some inputs may not work\n");
   }
   int fd;
   char *filename = NULL;
   if (!dev) {
-    // promt device select
+    fprintf(stdout, "no device specified, trying to scan all\n");
+    if (getuid() != 0) {
+      fprintf(stderr, "Not running as root, no devices may be available.\n");
+    }
+    filename = scan_devices();
   } else {
     filename = strdup(dev);
   }
