@@ -480,8 +480,12 @@ int main(int argc, char **argv) {
     start_reading(NULL);
   }
   if (argv[1] != NULL && argv[2] == NULL) {
-    initialize_main(argc, argv);
-    start_reading(NULL);
+    if (strncmp(DEV_INPUT, argv[1], 16) == 0) {
+      start_reading(argv[1]);
+    } else {
+      initialize_main(argc, argv);
+      start_reading(NULL);
+    }
   }
   if (argv[1] != NULL && argv[2] != NULL) {
     initialize_main(argc, argv);
