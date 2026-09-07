@@ -455,7 +455,14 @@ error:
   return EXIT_FAILURE;
 }
 
-void usage() { fprintf(stderr, "klisten [flags] device"); }
+void usage() {
+
+    fprintf(stderr, "\nusage\n");
+    fprintf(stderr, "klisten [flags] (device)\n");
+    fprintf(stderr, "v - non verbose mode\n");
+    fprintf(stderr, "h - human readable\n");
+    exit(1);
+}
 
 void initialize_main(int argc, char **argv) {
   int i = 0;
@@ -468,6 +475,10 @@ void initialize_main(int argc, char **argv) {
       break;
     case 'v':
       verbose = 0;
+      break;
+    default:
+      fprintf(stderr, "%c - unknown flag\n", c);
+      usage();
       break;
     }
 
