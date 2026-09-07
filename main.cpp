@@ -457,18 +457,18 @@ error:
 
 void usage() {
 
-    fprintf(stderr, "\nusage\n");
-    fprintf(stderr, "klisten [flags] (device)\n");
-    fprintf(stderr, "v - non verbose mode\n");
-    fprintf(stderr, "h - human readable\n");
-    exit(1);
+  fprintf(stderr, "\nusage\n");
+  fprintf(stderr, "klisten [flags] (device)\n");
+  fprintf(stderr, "v - non verbose mode\n");
+  fprintf(stderr, "h - human readable\n");
+  exit(1);
 }
 
 void initialize_main(int argc, char **argv) {
   int i = 0;
   char c;
-  while ((c = argv[1][i]) != '\0') {
 
+  while ((c = argv[1][i]) != '\0') {
     switch (c) {
     case 'h':
       human = 1;
@@ -487,20 +487,18 @@ void initialize_main(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
-  if (argv[1] == NULL) {
-    start_reading(NULL);
-  }
   if (argv[1] != NULL && argv[2] == NULL) {
     if (strncmp(DEV_INPUT, argv[1], 16) == 0) {
-      start_reading(argv[1]);
+      return start_reading(argv[1]);
     } else {
       initialize_main(argc, argv);
-      start_reading(NULL);
+      return start_reading(NULL);
     }
   }
   if (argv[1] != NULL && argv[2] != NULL) {
     initialize_main(argc, argv);
-    start_reading(argv[2]);
+    return start_reading(argv[2]);
   }
+  return start_reading(NULL);
   return EXIT_FAILURE;
 }
